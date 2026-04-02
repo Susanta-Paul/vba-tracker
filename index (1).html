@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VBA Study Tracker — Danesh</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0f;
+    --surface: #161618;
+    --surface2: #1e1e21;
+    --surface3: #252529;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f0ede8;
+    --muted: #7a7875;
+    --muted2: #5a5855;
+    --accent: #c8f57a;
+    --accent2: #8ef0c4;
+    --accent3: #f5c27a;
+    --accent4: #f57a8e;
+    --purple: #b8a6f5;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    padding: 0;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  .header {
+    padding: 2.5rem 2rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+
+  .header-left h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .header-left h1 span { color: var(--accent); }
+
+  .header-left p {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .progress-ring-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .ring-label { text-align: right; }
+  .ring-label .pct {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .ring-label .pct-sub { font-size: 10px; color: var(--muted); margin-top: 2px; letter-spacing: 0.06em; }
+
+  svg.ring { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--surface3); stroke-width: 4; }
+  .ring-fill { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+
+  /* STATS BAR */
+  .stats-bar {
+    display: flex;
+    padding: 0 2rem;
+    margin: 1.5rem 0 0;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .stat-pill {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    padding: 6px 14px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .stat-pill .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+  }
+
+  .stat-pill .val { font-weight: 500; color: var(--text); }
+  .stat-pill .lbl { color: var(--muted); }
+
+  /* MAIN LAYOUT */
+  .main { padding: 1.5rem 2rem 4rem; max-width: 900px; margin: 0 auto; }
+
+  /* WEEK SECTION */
+  .week-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 2rem 0 1rem;
+  }
+
+  .week-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 99px;
+  }
+
+  .week-line { flex: 1; height: 1px; background: var(--border); }
+
+  .week-progress-text {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* DAY CARD */
+  .day-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .day-card:hover { border-color: var(--border2); }
+
+  .day-card.completed-day { border-color: rgba(200, 245, 122, 0.2); }
+  .day-card.trip-day { border-color: rgba(245, 194, 122, 0.2); }
+  .day-card.today { border-color: rgba(142, 240, 196, 0.35); box-shadow: 0 0 0 1px rgba(142,240,196,0.1); }
+
+  .day-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .day-date {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    min-width: 30px;
+    color: var(--muted);
+  }
+
+  .day-name-full {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    flex: 1;
+  }
+
+  .day-badge {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-weight: 500;
+  }
+
+  .badge-work { background: rgba(178,166,245,0.12); color: var(--purple); }
+  .badge-trip { background: rgba(245,194,122,0.12); color: var(--accent3); }
+  .badge-free { background: rgba(142,240,196,0.12); color: var(--accent2); }
+
+  .day-check-count {
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 40px;
+    text-align: right;
+  }
+
+  .chevron {
+    color: var(--muted2);
+    font-size: 12px;
+    transition: transform 0.2s;
+  }
+
+  .day-card.open .chevron { transform: rotate(180deg); }
+
+  /* TASK LIST */
+  .task-list {
+    padding: 0 16px 14px;
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    animation: fadeIn 0.15s ease;
+  }
+
+  .day-card.open .task-list { display: flex; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+  .task-divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+  .task-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background 0.15s;
+    position: relative;
+  }
+
+  .task-item:hover { background: var(--surface2); }
+
+  .task-item.done .task-text { color: var(--muted2); text-decoration: line-through; }
+  .task-item.done .task-time { color: var(--muted2); }
+
+  .task-checkbox {
+    width: 18px; height: 18px;
+    border: 1.5px solid var(--border2);
+    border-radius: 5px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+
+  .task-item.done .task-checkbox {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .checkmark { display: none; font-size: 10px; color: #0e0e0f; font-weight: 700; }
+  .task-item.done .checkmark { display: block; }
+
+  .task-content { flex: 1; }
+
+  .task-time {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    margin-bottom: 2px;
+  }
+
+  .task-text { font-size: 13px; line-height: 1.45; color: var(--text); }
+
+  .task-tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 1px 8px;
+    border-radius: 99px;
+    margin-top: 4px;
+    letter-spacing: 0.04em;
+  }
+
+  .tag-exercise { background: rgba(30,158,117,0.15); color: #5dcaa5; }
+  .tag-library { background: rgba(55,138,221,0.15); color: #7fbde8; }
+  .tag-work { background: rgba(136,135,128,0.15); color: #aaa; }
+  .tag-vba { background: rgba(178,166,245,0.15); color: var(--purple); }
+  .tag-rest { background: rgba(245,122,142,0.15); color: var(--accent4); }
+  .tag-free { background: rgba(142,240,196,0.15); color: var(--accent2); }
+
+  /* TOPIC NOTES PANEL */
+  .notes-toggle {
+    font-size: 11px;
+    color: var(--purple);
+    background: rgba(178,166,245,0.08);
+    border: 1px solid rgba(178,166,245,0.18);
+    border-radius: 99px;
+    padding: 3px 10px;
+    cursor: pointer;
+    margin-top: 4px;
+    display: inline-block;
+    transition: background 0.15s;
+  }
+
+  .notes-toggle:hover { background: rgba(178,166,245,0.15); }
+
+  .notes-panel {
+    display: none;
+    background: var(--surface2);
+    border: 1px solid rgba(178,166,245,0.15);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+
+  .notes-panel.open { display: block; animation: fadeIn 0.15s ease; }
+
+  .notes-panel ul { padding-left: 1rem; }
+  .notes-panel li { margin-bottom: 4px; }
+  .notes-panel strong { color: var(--text); font-weight: 500; }
+
+  /* RESET BUTTON */
+  .reset-btn {
+    background: none;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 99px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.04em;
+  }
+
+  .reset-btn:hover { border-color: var(--accent4); color: var(--accent4); }
+
+  /* FOOTER */
+  .footer {
+    text-align: center;
+    padding: 2rem;
+    font-size: 11px;
+    color: var(--muted2);
+    letter-spacing: 0.06em;
+    border-top: 1px solid var(--border);
+    margin-top: 2rem;
+  }
+
+  .trip-banner {
+    background: rgba(245,194,122,0.06);
+    border: 1px solid rgba(245,194,122,0.15);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--accent3);
+    font-family: 'Lora', serif;
+    font-style: italic;
+    margin: 0 16px 14px;
+  }
+
+  /* Saved indicator */
+  .save-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface2);
+    border: 1px solid rgba(200,245,122,0.3);
+    color: var(--accent);
+    font-size: 11px;
+    padding: 8px 16px;
+    border-radius: 99px;
+    letter-spacing: 0.06em;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    z-index: 999;
+  }
+  .save-toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>VBA <span>Study</span> Tracker</h1>
+    <p>2-Week Schedule · Apr 7 – Apr 20, 2026</p>
+  </div>
+  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+    <div class="progress-ring-wrap">
+      <div class="ring-label">
+        <div class="pct" id="pct-text">0%</div>
+        <div class="pct-sub">complete</div>
+      </div>
+      <svg class="ring" width="52" height="52" viewBox="0 0 52 52">
+        <circle class="ring-bg" cx="26" cy="26" r="22"/>
+        <circle class="ring-fill" id="ring-fill" cx="26" cy="26" r="22" stroke-dasharray="138.2" stroke-dashoffset="138.2"/>
+      </svg>
+    </div>
+    <button class="reset-btn" onclick="resetAll()">↺ reset all</button>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-pill">
+    <div class="dot" style="background:var(--accent)"></div>
+    <span class="val" id="done-count">0</span>
+    <span class="lbl">tasks done</span>
+  </div>
+  <div class="stat-pill">
+    <div class="dot" style="background:var(--muted2)"></div>
+    <span class="val" id="remain-count">0</span>
+    <span class="lbl">remaining</span>
+  </div>
+  <div class="stat-pill">
+    <div class="dot" style="background:var(--purple)"></div>
+    <span class="val" id="vba-count">0</span>
+    <span class="lbl">VBA sessions done</span>
+  </div>
+  <div class="stat-pill">
+    <div class="dot" style="background:#5dcaa5"></div>
+    <span class="val" id="ex-count">0</span>
+    <span class="lbl">workouts done</span>
+  </div>
+</div>
+
+<div class="main" id="main"></div>
+
+<div class="footer">built for danesh · stay consistent, excel at excel</div>
+<div class="save-toast" id="save-toast">✓ saved</div>
+
+<script>
+const SCHEDULE = [
+  {
+    week: 1,
+    days: [
+      {
+        date: "Apr 7", name: "Monday", type: "work",
+        tasks: [
+          { time: "7:30 – 8:30", text: "Wake up + 30 min exercise + get ready", tag: "exercise", notes: null },
+          { time: "8:45 – 10:00", text: "Library — VBA study session", tag: "library", topic: "Intro: what is VBA, the editor, recording macros", notes: ["Open Excel → Alt+F11 to enter VBA editor", "Record a simple macro: format a cell, bold headers", "Understand the difference between macros & VBA code", "Read: Automate the Boring Stuff (Ch. VBA equivalent concept)", "Goal: record + run 2 macros by end of session"] },
+          { time: "10:30 – 7:30 PM", text: "Work (9 hrs)", tag: "work", notes: null },
+          { time: "8:00 – 11:30 PM", text: "Dinner + unwind — no screens after 11 PM", tag: "rest", notes: null }
+        ]
+      },
+      {
+        date: "Apr 8", name: "Tuesday", type: "work",
+        tasks: [
+          { time: "7:30 – 8:30", text: "Wake up + 30 min exercise + get ready", tag: "exercise", notes: null },
+          { time: "8:45 – 10:00", text: "Library — VBA study session", tag: "library", topic: "Variables, data types, MsgBox, InputBox", notes: ["Declare variables: Dim x As Integer", "Data types: String, Integer, Long, Double, Boolean", "MsgBox — show alerts and messages", "InputBox — get user input", "Mini exercise: ask user for their name, show greeting"] },
+          { time: "10:30 – 7:30 PM", text: "Work (9 hrs)", tag: "work", notes: null },
+          { time: "8:00 – 11:30 PM", text: "Dinner + unwind", tag: "rest", notes: null }
+        ]
+      },
+      {
+        date: "Apr 9", name: "Wednesday", type: "work",
+        tasks: [
+          { time: "7:30 – 8:30", text: "Wake up + 30 min exercise + get ready", tag: "exercise", notes: null },
+          { time: "8:45 – 10:00", text: "Library — VBA study session", tag: "library", topic: "If/Else conditions + loops (For, Do While)", notes: ["If X > 0 Then ... Else ... End If", "For i = 1 To 10 ... Next i", "Do While condition ... Loop", "Exercise: loop through A1:A20, color cells > 1000 in green", "Bonus: use nested If inside a For loop"] },
+          { time: "10:30 – 7:30 PM", text: "Work (9 hrs)", tag: "work", notes: null },
+          { time: "8:00 – 11:30 PM", text: "Dinner + unwind", tag: "rest", notes: null }
+        ]
+      },
+      {
+        date: "Apr 10", name: "Thursday", type: "work",
+        tasks: [
+          { time: "7:30 – 8:30", text: "Wake up + 30 min exercise + get ready", tag: "exercise", notes: null },
+          { time: "8:45 – 10:00", text: "Library — VBA study session", tag: "library", topic: "Working with cells, ranges, and sheets", notes: ["Range('A1').Value = 'Hello'", "Cells(row, col) syntax", "Sheets('Sheet1').Activate", "LastRow = Cells(Rows.Count, 1).End(xlUp).Row", "Exercise: write macro to auto-sum last row of a dataset"] },
+          { time: "10:30 – 7:30 PM", text: "Work (9 hrs)", tag: "work", notes: null },
+          { time: "8:00 – 11:30 PM", text: "Dinner + unwind", tag: "rest", notes: null }
+        ]
+      },
+      {
+        date: "Apr 11", name: "Friday", type: "work",
+        tasks: [
+          { time: "7:30 – 8:30", text: "Wake up + 30 min exercise + get ready", tag: "exercise", notes: null },
+          { time: "8:45 – 10:00", text: "Library — VBA recap Week 1", tag: "library", topic: "Recap & fill gaps from Mon–Thu", notes: ["Review any topic that felt confusing this week", "Re-do one exercise from scratch without notes", "Write a single macro that: takes input, loops, formats output", "This is your Week 1 checkpoint — can you explain each concept?"] },
+          { time: "10:30 – 7:30 PM", text: "Work (9 hrs)", tag: "work", notes: null },
+          { time: "8:00 – 11:30 PM", text: "Pack for trip + relax", tag: "rest", notes: null }
+        ]
+      },
+      {
+        date: "Apr 12–13", name: "Sat – Sun", type: "trip",
+        tasks: [
+          { time: "All day", text: "Trip — full rest, no VBA. You've earned it!", tag: "free", notes: null }
+        ]
+      }
+    ]
+  },
+  {
+    week: 2,
+    days: [
+      {
+        date: "Apr 14", name: "Monday", type: "work",
+        tasks: [
+          { time: "7:30 – 8:30", text: "Wake up + 30 min exercise + get ready", tag: "exercise", notes: null },
+          { time: "8:45 – 10:00", text: "Library — VBA study session", tag: "library", topic: "Subs vs Functions, passing arguments", notes: ["Sub vs Function — when to use each", "Passing arguments: Sub FormatRow(rowNum As Integer)", "Return values from Functions", "Exercise: write a Function that calculates GST for any amount", "Call the function from a Sub, display result in a cell"] },
+          { time: "10:30 – 7:30 PM", text: "Work (9 hrs)", tag: "work", notes: null },
+          { time: "8:00 – 11:30 PM", text: "Dinner + unwind", tag: "rest", notes: null }
+        ]
+      },
+      {
+        date: "Apr 15", name: "Tuesday", type: "work",
+        tasks: [
+          { time: "7:30 – 8:30", text: "Wake up + 30 min exercise + get ready", tag: "exercise", notes: null },
+          { time: "8:45 – 10:00", text: "Library — VBA study session", tag: "library", topic: "Error handling, On Error, debugging", notes: ["On Error GoTo ErrorHandler", "On Error Resume Next (use sparingly)", "Debug.Print — print values to immediate window", "MsgBox Err.Description to show error", "Exercise: add error handling to your Week 1 macros"] },
+          { time: "10:30 – 7:30 PM", text: "Work (9 hrs)", tag: "work", notes: null },
+          { time: "8:00 – 11:30 PM", text: "Dinner + unwind", tag: "rest", notes: null }
+        ]
+      },
+      {
+        date: "Apr 16", name: "Wednesday", type: "work",
+        tasks: [
+          { time: "7:30 – 8:30", text: "Wake up + 30 min exercise + get ready", tag: "exercise", notes: null },
+          { time: "8:45 – 10:00", text: "Library — VBA study session", tag: "library", topic: "Automate formatting + generate basic reports", notes: ["Auto-format headers: bold, color, border, font size", "Freeze panes, set column widths via VBA", "Create a summary sheet from raw data sheet", "Exercise: macro that reads transactions, builds a formatted summary", "Use With...End With for cleaner formatting code"] },
+          { time: "10:30 – 7:30 PM", text: "Work (9 hrs)", tag: "work", notes: null },
+          { time: "8:00 – 11:30 PM", text: "Dinner + unwind", tag: "rest", notes: null }
+        ]
+      },
+      {
+        date: "Apr 17", name: "Thursday", type: "work",
+        tasks: [
+          { time: "7:30 – 8:30", text: "Wake up + 30 min exercise + get ready", tag: "exercise", notes: null },
+          { time: "8:45 – 10:00", text: "Library — VBA study session", tag: "library", topic: "PDF export + file/folder automation", notes: ["Export sheet as PDF: ActiveSheet.ExportAsFixedFormat", "Save files with dynamic names using date: Format(Now(), 'YYYY-MM-DD')", "Loop through multiple sheets and export each", "Exercise: macro to export each client sheet as named PDF", "Bonus: open file dialog with Application.GetOpenFilename"] },
+          { time: "10:30 – 7:30 PM", text: "Work (9 hrs)", tag: "work", notes: null },
+          { time: "8:00 – 11:30 PM", text: "Dinner + unwind", tag: "rest", notes: null }
+        ]
+      },
+      {
+        date: "Apr 18", name: "Friday", type: "work",
+        tasks: [
+          { time: "7:30 – 8:30", text: "Wake up + 30 min exercise + get ready", tag: "exercise", notes: null },
+          { time: "8:45 – 10:00", text: "Library — Begin mini project", tag: "library", topic: "Start mini project: automate a real CA task", notes: ["Ideas: auto-format trial balance, generate invoice, attendance macro", "Plan your macro: what input? what output? what steps?", "Write the skeleton code — Subs and functions needed", "This continues over the weekend — just start today!"] },
+          { time: "10:30 – 7:30 PM", text: "Work (9 hrs)", tag: "work", notes: null },
+          { time: "8:00 – 11:30 PM", text: "Dinner + relax", tag: "rest", notes: null }
+        ]
+      },
+      {
+        date: "Apr 19–20", name: "Sat – Sun", type: "free",
+        tasks: [
+          { time: "Morning 2–3 hrs", text: "Complete your mini project — automate something real", tag: "vba", topic: "Mini project: invoice / trial balance / attendance automation", notes: ["Finish the macro you started Friday", "Test it on real or sample data", "Add error handling and comments to your code", "You now know enough VBA to be useful at work!"] },
+          { time: "Rest of day", text: "Full rest — you've completed the 2-week plan!", tag: "free", notes: null }
+        ]
+      }
+    ]
+  }
+];
+
+// ── STATE: localStorage-backed ──────────────────────────────────────────────
+const STATE_KEY = 'vba_tracker_v2';
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STATE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch(e) {
+    console.warn('Could not load state:', e);
+    return {};
+  }
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STATE_KEY, JSON.stringify(state));
+    showToast();
+  } catch(e) {
+    console.warn('Could not save state:', e);
+  }
+}
+
+let state = loadState();
+
+// ── TOAST ───────────────────────────────────────────────────────────────────
+let toastTimer = null;
+function showToast() {
+  const t = document.getElementById('save-toast');
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1500);
+}
+
+// ── ID HELPERS ───────────────────────────────────────────────────────────────
+function taskId(wIdx, dIdx, tIdx) {
+  return `w${wIdx}_d${dIdx}_t${tIdx}`;
+}
+
+// ── INITIAL RENDER ───────────────────────────────────────────────────────────
+function render() {
+  const main = document.getElementById('main');
+  main.innerHTML = '';
+
+  SCHEDULE.forEach((week, wIdx) => {
+    const weekDiv = document.createElement('div');
+    weekDiv.id = `week_${wIdx}`;
+
+    const totalWeekTasks = week.days.reduce((a, d) => a + d.tasks.length, 0);
+    const doneWeekTasks  = week.days.reduce((a, d, dIdx) =>
+      a + d.tasks.filter((_, tIdx) => state[taskId(wIdx, dIdx, tIdx)]).length, 0);
+
+    const weekHeader = document.createElement('div');
+    weekHeader.className = 'week-header';
+    weekHeader.innerHTML = `
+      <div class="week-num">Week ${week.week}</div>
+      <div class="week-line"></div>
+      <div class="week-progress-text" id="wprog_${wIdx}">${doneWeekTasks}/${totalWeekTasks}</div>`;
+    weekDiv.appendChild(weekHeader);
+
+    week.days.forEach((day, dIdx) => {
+      const doneTasks = day.tasks.filter((_, tIdx) => state[taskId(wIdx, dIdx, tIdx)]).length;
+      const allDone   = doneTasks === day.tasks.length;
+      const isTrip    = day.type === 'trip';
+      const isFree    = day.type === 'free';
+
+      const card = document.createElement('div');
+      card.id        = `card_${wIdx}_${dIdx}`;
+      card.className = `day-card${allDone ? ' completed-day' : ''}${isTrip ? ' trip-day' : ''}`;
+
+      const badgeClass = isTrip ? 'badge-trip' : isFree ? 'badge-free' : 'badge-work';
+      const badgeText  = isTrip ? 'trip' : isFree ? 'free weekend' : 'work day';
+
+      card.innerHTML = `
+        <div class="day-head" onclick="toggleDay('card_${wIdx}_${dIdx}')">
+          <div class="day-date">${day.date.split(' ')[1] || day.date}</div>
+          <div class="day-name-full">${day.name}</div>
+          <div class="day-badge ${badgeClass}">${badgeText}</div>
+          <div class="day-check-count" id="cnt_${wIdx}_${dIdx}">${doneTasks}/${day.tasks.length}</div>
+          <div class="chevron">▼</div>
+        </div>
+        ${isTrip ? `<div class="trip-banner">"The body heals with rest, the mind heals with travel. Go enjoy it."</div>` : ''}
+        <div class="task-list">
+          ${day.tasks.map((task, tIdx) => {
+            const id   = taskId(wIdx, dIdx, tIdx);
+            const done = !!state[id];
+            const noteId = `notes_${id}`;
+            return `
+              <div class="task-item${done ? ' done' : ''}" id="task_${id}"
+                   onclick="toggleTask(${wIdx},${dIdx},${tIdx},event)">
+                <div class="task-checkbox"><span class="checkmark">✓</span></div>
+                <div class="task-content">
+                  <div class="task-time">${task.time}</div>
+                  <div class="task-text">${task.text}</div>
+                  <div><span class="task-tag tag-${task.tag}">${task.tag}</span></div>
+                  ${task.topic ? `
+                    <div class="notes-toggle" onclick="toggleNotes('${noteId}',event)">▸ topic details</div>
+                    <div class="notes-panel" id="${noteId}">
+                      <strong>${task.topic}</strong>
+                      ${task.notes ? `<ul style="margin-top:6px">${task.notes.map(n=>`<li>${n}</li>`).join('')}</ul>` : ''}
+                    </div>` : ''}
+                </div>
+              </div>`;
+          }).join('<div class="task-divider"></div>')}
+        </div>`;
+
+      weekDiv.appendChild(card);
+    });
+
+    main.appendChild(weekDiv);
+  });
+
+  updateStats();
+}
+
+// ── TOGGLE DAY (accordion) — no re-render ───────────────────────────────────
+function toggleDay(cardId) {
+  const card = document.getElementById(cardId);
+  card.classList.toggle('open');
+}
+
+// ── TOGGLE TASK — in-place DOM update, NO full re-render ─────────────────────
+function toggleTask(wIdx, dIdx, tIdx, e) {
+  // Don't fire if they clicked the notes toggle
+  if (e.target.classList.contains('notes-toggle')) return;
+
+  const id   = taskId(wIdx, dIdx, tIdx);
+  state[id]  = !state[id];
+  saveState();                          // ← persists immediately
+
+  // 1. Update the task row class
+  const taskEl = document.getElementById('task_' + id);
+  taskEl.classList.toggle('done', state[id]);
+
+  // 2. Recount done tasks for this day
+  const day       = SCHEDULE[wIdx].days[dIdx];
+  const doneTasks = day.tasks.filter((_, ti) => state[taskId(wIdx, dIdx, ti)]).length;
+  const allDone   = doneTasks === day.tasks.length;
+
+  // 3. Update the counter badge on the day header
+  document.getElementById(`cnt_${wIdx}_${dIdx}`).textContent = `${doneTasks}/${day.tasks.length}`;
+
+  // 4. Update completed-day border on the card
+  const card = document.getElementById(`card_${wIdx}_${dIdx}`);
+  card.classList.toggle('completed-day', allDone);
+
+  // 5. Update week progress text
+  const week = SCHEDULE[wIdx];
+  const totalWeekTasks = week.days.reduce((a, d) => a + d.tasks.length, 0);
+  const doneWeekTasks  = week.days.reduce((a, d, di) =>
+    a + d.tasks.filter((_, ti) => state[taskId(wIdx, di, ti)]).length, 0);
+  document.getElementById(`wprog_${wIdx}`).textContent = `${doneWeekTasks}/${totalWeekTasks}`;
+
+  // 6. Update global stats ring + pills
+  updateStats();
+}
+
+// ── NOTES PANEL ─────────────────────────────────────────────────────────────
+function toggleNotes(id, e) {
+  e.stopPropagation();
+  document.getElementById(id).classList.toggle('open');
+}
+
+// ── GLOBAL STATS ─────────────────────────────────────────────────────────────
+function updateStats() {
+  let total = 0, done = 0, vbaDone = 0, exDone = 0;
+
+  SCHEDULE.forEach((week, wIdx) => {
+    week.days.forEach((day, dIdx) => {
+      day.tasks.forEach((task, tIdx) => {
+        total++;
+        if (state[taskId(wIdx, dIdx, tIdx)]) {
+          done++;
+          if (task.tag === 'library')  vbaDone++;
+          if (task.tag === 'exercise') exDone++;
+        }
+      });
+    });
+  });
+
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  document.getElementById('pct-text').textContent   = pct + '%';
+  document.getElementById('done-count').textContent  = done;
+  document.getElementById('remain-count').textContent = total - done;
+  document.getElementById('vba-count').textContent   = vbaDone;
+  document.getElementById('ex-count').textContent    = exDone;
+
+  const circ   = 138.2;
+  const offset = circ - (pct / 100) * circ;
+  document.getElementById('ring-fill').style.strokeDashoffset = offset;
+}
+
+// ── RESET ────────────────────────────────────────────────────────────────────
+function resetAll() {
+  if (confirm('Reset all progress? This cannot be undone.')) {
+    state = {};
+    saveState();
+    render();   // full re-render is fine on reset
+  }
+}
+
+// ── BOOT ─────────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
